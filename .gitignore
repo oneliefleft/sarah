@@ -27,3 +27,20 @@
 *.exe
 *.out
 *.app
+
+# Backup files
+**/*~
+
+# CMake generated files.
+CMakeCache.txt
+CMakeFiles
+Makefile
+cmake_install.cmake
+
+# Output generated data.
+*.pvtu
+*.vtu
+
+# Project generated/required files
+aphex
+!aphex.cc
