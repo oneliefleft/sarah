@@ -43,19 +43,6 @@ INCLUDE_DIRECTORIES (include/sarah)
 ADD_LIBRARY(sarah
   # tools
   source/matrix_creator.cc
-  source/vector_creator.cc
-  # physics
-  source/dielectric_tensor.cc
-  source/elastic_tensor.cc
-  source/lattice_tensor.cc
-  source/piezoelectric_tensor.cc
-  source/polarelectric_tensor.cc
-  source/tensor_base.cc
-  # tools
-  source/function_tools.cc
-  # base models
-  source/elastic_problem.cc
-  source/piezoelectric_problem.cc
   )
 
 DEAL_II_SETUP_TARGET (sarah)

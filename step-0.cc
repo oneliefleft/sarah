@@ -40,12 +40,7 @@
 #include <deal.II/numerics/matrix_tools.h>
 #include <deal.II/numerics/vector_tools.h>
 
-#include <mandy/elastic_tensor.h>
-#include <mandy/lattice_tensor.h>
-#include <mandy/matrix_creator.h>
-#include <mandy/vector_creator.h>
-
-#include <mandy/crystal_symmetry_group.h>
+#include <sarah/matrix_creator.h>
 
 #include <fstream>
 #include <iostream>
@@ -53,7 +48,7 @@
 #include <algorithm>    // std::transform
 #include <functional>   // std::plus
 
-namespace mandy
+namespace sarah
 {
 
   /**
@@ -61,19 +56,19 @@ namespace mandy
    * linear function.
    */
   template <int dim>
-  class MaterialID
+  class CatProblem
   {
   public:
 
     /**
      * Class constructor.
      */
-    MaterialID (const std::string &prm);
+    CatProblem (const std::string &prm);
 
     /**
      * Class destructor.
      */
-    ~MaterialID ();
+    ~CatProblem ();
 
     /**
      * Wrapper function, that controls the order of excecution.
@@ -181,14 +176,14 @@ namespace mandy
      */
     dealii::ParameterHandler parameters;
     
-  }; // MaterialID
+  }; // CatProblem
 
   
   /**
    * Class constructor.
    */
   template <int dim>
-  MaterialID<dim>::MaterialID (const std::string &prm)
+  CatProblem<dim>::CatProblem (const std::string &prm)
     :
     mpi_communicator (MPI_COMM_WORLD),
     triangulation (mpi_communicator,
@@ -208,7 +203,7 @@ namespace mandy
                               "The number of times the 1-cell coarse mesh should "
                               "be refined globally for our computations.");
 
-    parameters.declare_entry ("MaterialID", "0",
+    parameters.declare_entry ("CatProblem", "0",
                               dealii::Patterns::Anything (),
                               "A functional description of the material ID.");
     
@@ -220,7 +215,7 @@ namespace mandy
    * Class destructor.
    */
   template <int dim>
-  MaterialID<dim>::~MaterialID ()
+  CatProblem<dim>::~CatProblem ()
   {
     // Wipe DoF handlers.
     dof_handler.clear ();
@@ -232,7 +227,7 @@ namespace mandy
    */
   template <int dim>
   void
-  MaterialID<dim>::make_coarse_grid ()
+  CatProblem<dim>::make_coarse_grid ()
   {
     dealii::TimerOutput::Scope time (timer, "make coarse grid");
 
@@ -248,7 +243,7 @@ namespace mandy
    * Setup system matrices and vectors.
    */
   template <int dim>
-  void MaterialID<dim>::setup_system ()
+  void CatProblem<dim>::setup_system ()
   {
     dealii::TimerOutput::Scope time (timer, "setup system");
 
@@ -294,12 +289,12 @@ namespace mandy
    * however no such thing currently exists in the deal.II library for
    * parallel matrices and vectors. Instead, the mass matrix and right
    * hand side vector are assembled by hand in functions defined in
-   * the namepsaces, mandy::MatrixCreator and mandy::VectorCreator,
+   * the namepsaces, sarah::MatrixCreator and sarah::VectorCreator,
    * respectively.
    */
   template <int dim>
   void
-  MaterialID<dim>::assemble_system ()
+  CatProblem<dim>::assemble_system ()
   {
     dealii::TimerOutput::Scope time (timer, "assemble system");
 
@@ -309,17 +304,12 @@ namespace mandy
     // Initialise the function parser.
     dealii::FunctionParser<dim> material_identification;
     material_identification.initialize (dealii::FunctionParser<dim>::default_variable_names (),
-					parameters.get ("MaterialID"),
+					parameters.get ("CatProblem"),
 					typename dealii::FunctionParser<dim>::ConstMap ());
     
-    mandy::MatrixCreator::create_mass_matrix<dim> (fe, dof_handler, quadrature_formula,
+    sarah::MatrixCreator::create_mass_matrix<dim> (fe, dof_handler, quadrature_formula,
 						   system_matrix, constraints,
 						   mpi_communicator);
-
-    mandy::VectorCreator::create_right_hand_side_vector<dim> (fe, dof_handler, quadrature_formula,
-     							      system_rhs, constraints,
-							      material_identification,
-							      mpi_communicator);
   }
   
 
@@ -328,7 +318,7 @@ namespace mandy
    */
   template <int dim>
   unsigned int
-  MaterialID<dim>::solve ()
+  CatProblem<dim>::solve ()
   {
     dealii::TimerOutput::Scope time (timer, "solve");
     
@@ -358,7 +348,7 @@ namespace mandy
    */
   template <int dim>
   void
-  MaterialID<dim>::output_results (const unsigned int cycle)
+  CatProblem<dim>::output_results (const unsigned int cycle)
   {
     dealii::TimerOutput::Scope time (timer, "output_results");
 
@@ -408,7 +398,7 @@ namespace mandy
    * material id (solution vector).
    */
   template <int dim>
-  void MaterialID<dim>::refine_grid ()
+  void CatProblem<dim>::refine_grid ()
   {
     dealii::TimerOutput::Scope time (timer, "refine grid");
 
@@ -433,13 +423,13 @@ namespace mandy
    */
   template <int dim>
   void
-  MaterialID<dim>::run ()
+  CatProblem<dim>::run ()
   {
     const unsigned int n_cycles = 5;
     
     for (unsigned int cycle=0; cycle<n_cycles; ++cycle)
       {
-        pcout << "MaterialID:: Cycle " << cycle << ':'
+        pcout << "CatProblem:: Cycle " << cycle << ':'
 	      << std::endl;
 
 	if (cycle==0)
@@ -481,7 +471,7 @@ namespace mandy
       } // for cycle<n_cycles
   } 
   
-} // namespace mandy
+} // namespace sarah
 
 
 /**
@@ -494,7 +484,7 @@ int main (int argc, char *argv[])
   
   try
     {
-      mandy::MaterialID<3> material_id ("step-0-material.prm");
+      sarah::CatProblem<2> material_id ("step-0-material.prm");
       material_id.run ();
     }
 
