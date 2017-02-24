@@ -147,20 +147,20 @@ namespace sarah
     dealii::ConstraintMatrix constraints;
     
     /**
-     * System matrix - a mass matrix.
+     * System matrix.
      */
     dealii::PETScWrappers::MPI::SparseMatrix system_matrix;
 
     /**
-     * Locally relevant solution vector.
+     * Mass matrix.
      */
-    dealii::PETScWrappers::MPI::Vector locally_relevant_solution;
+    dealii::PETScWrappers::MPI::SparseMatrix mass_matrix;
 
     /**
-     * System right hand side function - interpolated function.
+     * Locally relevant solution vector.
      */
-    dealii::PETScWrappers::MPI::Vector system_rhs;
-    
+    std::vector<dealii::PETScWrappers::MPI::Vector> locally_relevant_solution;
+
     /**
      * Parallel iostream.
      */
@@ -202,10 +202,6 @@ namespace sarah
                               dealii::Patterns::Integer (0, 20),
                               "The number of times the 1-cell coarse mesh should "
                               "be refined globally for our computations.");
-
-    parameters.declare_entry ("CatProblem", "0",
-                              dealii::Patterns::Anything (),
-                              "A functional description of the material ID.");
     
     parameters.parse_input (prm);
   }
@@ -253,10 +249,9 @@ namespace sarah
     dealii::DoFTools::extract_locally_relevant_dofs (dof_handler, locally_relevant_dofs);
 
     // Initialise distributed vectors.
-    locally_relevant_solution.reinit (locally_owned_dofs, locally_relevant_dofs,
-				      mpi_communicator);
-    system_rhs.reinit (locally_owned_dofs,
-		       mpi_communicator);
+    for (unsigned int i=0; i<n_eigenvectors; ++i)
+      locally_relevant_solution[i].reinit (locally_owned_dofs, locally_relevant_dofs,
+					   mpi_communicator);
 
     // Setup hanging node constraints.
     constraints.clear ();
@@ -265,7 +260,7 @@ namespace sarah
     constraints.close ();
 
     // Finally, create a distributed sparsity pattern and initialise
-    // the system matrix from that.
+    // the system- and mass-matrix from that.
     dealii::DynamicSparsityPattern dsp (locally_relevant_dofs);
     dealii::DoFTools::make_sparsity_pattern (dof_handler, dsp, constraints, false);
     dealii::SparsityTools::distribute_sparsity_pattern (dsp,
@@ -275,6 +270,8 @@ namespace sarah
 
     system_matrix.reinit (locally_owned_dofs, locally_owned_dofs,
                           dsp, mpi_communicator);
+    mass_matrix.reinit (locally_owned_dofs, locally_owned_dofs,
+			dsp, mpi_communicator);
 
   }
 
@@ -402,7 +399,7 @@ namespace sarah
   {
     dealii::TimerOutput::Scope time (timer, "refine grid");
 
-    dealii::Vector<float> estimated_error_per_cell (triangulation.n_active_cells());
+    dealii::Vector<float> estimated_error_per_cell (triangulation.n_active_cells ());
     
     dealii::KellyErrorEstimator<dim>::estimate (dof_handler, dealii::QGauss<dim-1>(4),
 						typename dealii::FunctionMap<dim>::type (),
