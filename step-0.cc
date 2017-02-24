@@ -12,8 +12,7 @@
 #include <deal.II/lac/full_matrix.h>
 #include <deal.II/lac/petsc_parallel_sparse_matrix.h>
 #include <deal.II/lac/petsc_parallel_vector.h>
-#include <deal.II/lac/petsc_solver.h>
-#include <deal.II/lac/petsc_precondition.h>
+#include <deal.II/lac/slepc_solver.h>
 #include <deal.II/lac/sparsity_tools.h>
 #include <deal.II/lac/vector.h>
 
@@ -162,6 +161,16 @@ namespace sarah
     std::vector<dealii::PETScWrappers::MPI::Vector> locally_relevant_solution;
 
     /**
+     * Solution value.
+     */
+    std::vector<double> solution_value;
+
+    /**
+     * Number of eigenpairs to solve for.
+     */
+    const unsigned int n_x;
+    
+    /**
      * Parallel iostream.
      */
     dealii::ConditionalOStream pcout;
@@ -192,6 +201,7 @@ namespace sarah
                     dealii::Triangulation<dim>::smoothing_on_coarsening)),
     dof_handler (triangulation),
     fe (dealii::FE_Q<dim> (2), 1),
+    n_x (3),
     // ---
     pcout (std::cout, (dealii::Utilities::MPI::this_mpi_process (mpi_communicator) == 0)),
     timer (mpi_communicator, pcout,
@@ -248,8 +258,12 @@ namespace sarah
     locally_owned_dofs = dof_handler.locally_owned_dofs ();
     dealii::DoFTools::extract_locally_relevant_dofs (dof_handler, locally_relevant_dofs);
 
+    // Initialise values.
+    solution_value.resize (n_x, 0.);
+    
     // Initialise distributed vectors.
-    for (unsigned int i=0; i<n_eigenvectors; ++i)
+    locally_relevant_solution.resize (n_x);
+    for (unsigned int i=0; i<n_x; ++i)
       locally_relevant_solution[i].reinit (locally_owned_dofs, locally_relevant_dofs,
 					   mpi_communicator);
 
@@ -257,6 +271,7 @@ namespace sarah
     constraints.clear ();
     constraints.reinit (locally_relevant_dofs);
     dealii::DoFTools::make_hanging_node_constraints (dof_handler, constraints);
+    dealii::DoFTools::make_zero_boundary_constraints (dof_handler, constraints);
     constraints.close ();
 
     // Finally, create a distributed sparsity pattern and initialise
@@ -268,11 +283,11 @@ namespace sarah
 							mpi_communicator,
 							locally_relevant_dofs);
 
-    system_matrix.reinit (locally_owned_dofs, locally_owned_dofs,
-                          dsp, mpi_communicator);
-    mass_matrix.reinit (locally_owned_dofs, locally_owned_dofs,
-			dsp, mpi_communicator);
-
+    system_matrix.reinit (locally_owned_dofs, locally_owned_dofs, dsp,
+			  mpi_communicator);
+    
+    mass_matrix.reinit (locally_owned_dofs, locally_owned_dofs,	dsp,
+			mpi_communicator);
   }
 
 
@@ -305,7 +320,7 @@ namespace sarah
 					typename dealii::FunctionParser<dim>::ConstMap ());
     
     sarah::MatrixCreator::create_mass_matrix<dim> (fe, dof_handler, quadrature_formula,
-						   system_matrix, constraints,
+						   mass_matrix, constraints,
 						   mpi_communicator);
   }
   
@@ -319,19 +334,18 @@ namespace sarah
   {
     dealii::TimerOutput::Scope time (timer, "solve");
     
-    dealii::PETScWrappers::MPI::Vector completely_distributed_solution (locally_owned_dofs, mpi_communicator);
+    std::vector<dealii::PETScWrappers::MPI::Vector> completely_distributed_solution
+      (n_x, dealii::PETScWrappers::MPI::Vector (locally_owned_dofs, mpi_communicator));
 
-    // Solve using conjugate gradient method with no preconditioner
-    // (ie., system_matrix is ignored).
+    // Solve using KrylovSchur
     dealii::SolverControl solver_control (dof_handler.n_dofs (), 1e-06);
-    dealii::PETScWrappers::SolverCG solver (solver_control, mpi_communicator);
-    dealii::PETScWrappers::PreconditionNone preconditioner (system_matrix);
+    dealii::SLEPcWrappers::SolverKrylovSchur solver (solver_control, mpi_communicator);
     
-    solver.solve (system_matrix, completely_distributed_solution, system_rhs,
-		  preconditioner);
+    solver.solve (system_matrix, mass_matrix, solution_value, completely_distributed_solution);
     
     // Ensure that all ghost elements are also copied as necessary.
-    constraints.distribute (completely_distributed_solution);
+    for (unsigned int i=0; i<n_x; ++i)
+      constraints.distribute (completely_distributed_solution[i]);
     locally_relevant_solution = completely_distributed_solution;
 
     // Return the number of iterations (last step) of the solve.
@@ -351,7 +365,7 @@ namespace sarah
 
     dealii::DataOut<dim> data_out;
     data_out.attach_dof_handler (dof_handler);
-    data_out.add_data_vector (locally_relevant_solution, "material_id");
+    data_out.add_data_vector (locally_relevant_solution[0], "wavefunction");
 
     dealii::Vector<float> subdomain (triangulation.n_active_cells ());
     for (unsigned int i=0; i<subdomain.size(); ++i)
@@ -360,7 +374,7 @@ namespace sarah
 
     data_out.build_patches ();
     
-    const std::string filename = ("material_id-" +
+    const std::string filename = ("wavefunction-" +
                                   dealii::Utilities::int_to_string (cycle, 2) +
                                   "." +
                                   dealii::Utilities::int_to_string
@@ -376,12 +390,12 @@ namespace sarah
 	for (unsigned int i=0;
 	     i<dealii::Utilities::MPI::n_mpi_processes (mpi_communicator);
 	     ++i)
-	  filenames.push_back ("material_id-" +
+	  filenames.push_back ("wavefunction-" +
 			       dealii::Utilities::int_to_string (cycle, 2) +
 			       "." +
 			       dealii::Utilities::int_to_string (i, 4) +
 			       ".vtu");
-	std::ofstream master_output (("material_id-" +
+	std::ofstream master_output (("wavefunction-" +
 				      dealii::Utilities::int_to_string (cycle, 2) +
 				      ".pvtu").c_str ());
 
@@ -403,7 +417,7 @@ namespace sarah
     
     dealii::KellyErrorEstimator<dim>::estimate (dof_handler, dealii::QGauss<dim-1>(4),
 						typename dealii::FunctionMap<dim>::type (),
-						locally_relevant_solution,
+						locally_relevant_solution[0],
 						estimated_error_per_cell);
 
     dealii::parallel::distributed::GridRefinement::
@@ -438,7 +452,7 @@ namespace sarah
 	pcout << "   Number of active cells:       "
 	      << triangulation.n_global_active_cells ()
 	      << std::endl;
-
+	
 	setup_system ();
 
 	pcout << "   Number of degrees of freedom: "
@@ -451,10 +465,6 @@ namespace sarah
 
 	pcout << "   Solved in " << n_iterations
 	      << " iterations."
-	      << std::endl;
-
-	pcout << "   Linfty-norm:                  "
-	      << locally_relevant_solution.linfty_norm ()
 	      << std::endl;
 
 	// Output results if the number of processes is less than or
