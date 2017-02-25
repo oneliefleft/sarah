@@ -213,19 +213,18 @@ namespace sarah
                               "The number of times the 1-cell coarse mesh should "
                               "be refined globally for our computations.");
 
-    parameters.declare_entry ("Number of eigenvalues/eigenfunctions", "5",
+    parameters.declare_entry ("Potential", "0",
+                              dealii::Patterns::Anything (),
+                              "A functional description of the potential.");
+    
+    parameters.declare_entry ("Number of eigenpairs", "5",
                               dealii::Patterns::Integer (0, 100),
-                              "The number of eigenvalues/eigenfunctions "
-                              "to be computed.");
+                              "The number of eigenpairs to be computed.");
 
     parameters.declare_entry ("Number of eigenfunctions", "5",
                               dealii::Patterns::Integer (0, 100),
                               "The number of eigenfunctions "
                               "to be used for error indicators.");
-
-    parameters.declare_entry ("Potential", "0",
-                              dealii::Patterns::Anything (),
-                              "A functional description of the potential.");
     
     parameters.parse_input (prm);
   }
