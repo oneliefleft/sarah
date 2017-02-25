@@ -11,6 +11,6 @@ set Number of eigenfunctions             = 3
 set Number of eigenvalues/eigenfunctions = 3
 
 # A functional description of the potential.
-set Potential                            = 0
+set Potential                            = 0.5 * ( x*x + y*y )
 
 # -1.*((1./(cosh (sqrt((x-sqrt(12.5))^2+(y-sqrt(12.5))^2)))) + (1./(cosh (sqrt((x+sqrt(12.5))^2+(y+sqrt(12.5))^2)))))

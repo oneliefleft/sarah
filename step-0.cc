@@ -168,7 +168,7 @@ namespace sarah
     /**
      * Number of eigenpairs to solve for.
      */
-    const unsigned int n_x;
+    const unsigned int n_pairs;
     
     /**
      * Parallel iostream.
@@ -201,7 +201,7 @@ namespace sarah
                     dealii::Triangulation<dim>::smoothing_on_coarsening)),
     dof_handler (triangulation),
     fe (dealii::FE_Q<dim> (2), 1),
-    n_x (3),
+    n_pairs (3),
     // ---
     pcout (std::cout, (dealii::Utilities::MPI::this_mpi_process (mpi_communicator) == 0)),
     timer (mpi_communicator, pcout,
@@ -273,11 +273,11 @@ namespace sarah
     dealii::DoFTools::extract_locally_relevant_dofs (dof_handler, locally_relevant_dofs);
 
     // Initialise values.
-    solution_value.resize (n_x, 0.);
+    solution_value.resize (n_pairs, 0.);
     
     // Initialise distributed vectors.
-    locally_relevant_solution.resize (n_x);
-    for (unsigned int i=0; i<n_x; ++i)
+    locally_relevant_solution.resize (n_pairs);
+    for (unsigned int i=0; i<n_pairs; ++i)
       locally_relevant_solution[i].reinit (locally_owned_dofs, locally_relevant_dofs,
 					   mpi_communicator);
 
@@ -402,22 +402,26 @@ namespace sarah
     dealii::TimerOutput::Scope time (timer, "solve");
     
     std::vector<dealii::PETScWrappers::MPI::Vector> completely_distributed_solution;
-    completely_distributed_solution.resize (n_x);
-    for (unsigned int i=0; i<n_x; ++i)
+    completely_distributed_solution.resize (n_pairs);
+    for (unsigned int i=0; i<n_pairs; ++i)
       completely_distributed_solution[i].reinit (locally_owned_dofs,
 						 mpi_communicator);
     
     // Solve using KrylovSchur
     dealii::SolverControl solver_control (dof_handler.n_dofs (), 1e-06);
     dealii::SLEPcWrappers::SolverKrylovSchur solver (solver_control, mpi_communicator);    
+
+    solver.set_which_eigenpairs (EPS_SMALLEST_REAL);
+    solver.set_problem_type (EPS_GHEP);
+    
     solver.solve (system_matrix, mass_matrix, solution_value, completely_distributed_solution,
 		  completely_distributed_solution.size ());
 
     // Ensure that all ghost elements are also copied as necessary.
-    for (unsigned int i=0; i<n_x; ++i)
+    for (unsigned int i=0; i<n_pairs; ++i)
       constraints.distribute (completely_distributed_solution[i]);
 
-    for (unsigned int i=0; i<n_x; ++i)
+    for (unsigned int i=0; i<n_pairs; ++i)
       locally_relevant_solution[i] = completely_distributed_solution[i];
 
     // Return the number of iterations (last step) of the solve.
@@ -434,8 +438,9 @@ namespace sarah
   CatProblem<dim>::output_results (const unsigned int cycle)
   {
     dealii::TimerOutput::Scope time (timer, "output_results");
-
-    pcout << "   Values:";
+    
+    pcout << "   Values:"
+	  << std::endl;
     for (unsigned int i=0; i<solution_value.size (); ++i)
       pcout << "      " << i << ": " << solution_value[i]
 	    << std::endl;
@@ -443,7 +448,17 @@ namespace sarah
     dealii::DataOut<dim> data_out;
     data_out.attach_dof_handler (dof_handler);
     data_out.add_data_vector (locally_relevant_solution[0], "wavefunction");
-
+    
+    dealii::Vector<double> projected_potential (dof_handler.n_dofs ());
+    {
+      dealii::FunctionParser<dim> potential;
+      potential.initialize (dealii::FunctionParser<dim>::default_variable_names (),
+                            parameters.get ("Potential"),
+                            typename dealii::FunctionParser<dim>::ConstMap ());
+      dealii::VectorTools::interpolate (dof_handler, potential, projected_potential);
+    }
+    data_out.add_data_vector (projected_potential, "interpolated_potential");
+    
     dealii::Vector<float> subdomain (triangulation.n_active_cells ());
     for (unsigned int i=0; i<subdomain.size(); ++i)
       subdomain (i) = triangulation.locally_owned_subdomain ();
@@ -522,7 +537,7 @@ namespace sarah
   void
   CatProblem<dim>::run ()
   {
-    const unsigned int n_cycles = 5;
+    const unsigned int n_cycles = 3;
     
     for (unsigned int cycle=0; cycle<n_cycles; ++cycle)
       {
@@ -533,7 +548,8 @@ namespace sarah
 	  make_coarse_grid ();
 
 	else
-	  refine_grid ();
+	  // refine_grid ();
+	  triangulation.refine_global ();
 	
 	pcout << "   Number of active cells:       "
 	      << triangulation.n_global_active_cells ()
