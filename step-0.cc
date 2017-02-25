@@ -212,6 +212,20 @@ namespace sarah
                               dealii::Patterns::Integer (0, 20),
                               "The number of times the 1-cell coarse mesh should "
                               "be refined globally for our computations.");
+
+    parameters.declare_entry ("Number of eigenvalues/eigenfunctions", "5",
+                              dealii::Patterns::Integer (0, 100),
+                              "The number of eigenvalues/eigenfunctions "
+                              "to be computed.");
+
+    parameters.declare_entry ("Number of eigenfunctions", "5",
+                              dealii::Patterns::Integer (0, 100),
+                              "The number of eigenfunctions "
+                              "to be used for error indicators.");
+
+    parameters.declare_entry ("Potential", "0",
+                              dealii::Patterns::Anything (),
+                              "A functional description of the potential.");
     
     parameters.parse_input (prm);
   }
@@ -239,7 +253,7 @@ namespace sarah
 
     // Create a coarse grid according to the parameters given in the
     // input file.
-    dealii::GridGenerator::hyper_cube (triangulation, -10, 10);
+    dealii::GridGenerator::hyper_cube (triangulation, -5, 5);
     
     triangulation.refine_global (parameters.get_integer ("Global mesh refinement steps"));
   }
@@ -313,15 +327,68 @@ namespace sarah
     // Define quadrature rule to be used.
     const dealii::QGauss<dim> quadrature_formula (3);
 
-    // Initialise the function parser.
-    dealii::FunctionParser<dim> material_identification;
-    material_identification.initialize (dealii::FunctionParser<dim>::default_variable_names (),
-					parameters.get ("CatProblem"),
-					typename dealii::FunctionParser<dim>::ConstMap ());
-    
     sarah::MatrixCreator::create_mass_matrix<dim> (fe, dof_handler, quadrature_formula,
 						   mass_matrix, constraints,
 						   mpi_communicator);
+    
+    dealii::FEValues<dim> fe_values (fe, quadrature_formula,
+				     dealii::update_values            |
+				     dealii::update_gradients         |
+				     dealii::update_quadrature_points |
+				     dealii::update_JxW_values);
+    
+    const unsigned int dofs_per_cell = fe.dofs_per_cell;
+    const unsigned int n_q_points    = quadrature_formula.size();
+    
+    dealii::FullMatrix<double> cell_system_matrix (dofs_per_cell, dofs_per_cell);
+
+    std::vector<dealii::types::global_dof_index> local_dof_indices (dofs_per_cell);
+    
+    dealii::FunctionParser<dim> potential;
+    potential.initialize (dealii::FunctionParser<dim>::default_variable_names (),
+                          parameters.get ("Potential"),
+                          typename dealii::FunctionParser<dim>::ConstMap ());
+    
+    std::vector<double> potential_values (n_q_points);
+    
+    typename dealii::DoFHandler<dim>::active_cell_iterator
+      cell = dof_handler.begin_active (),
+      endc = dof_handler.end ();
+    
+    for (; cell!=endc; ++cell)
+      {
+        fe_values.reinit (cell);
+        cell_system_matrix = 0;
+	
+        potential.value_list (fe_values.get_quadrature_points (),
+                              potential_values);
+	
+        for (unsigned int q_point=0; q_point<n_q_points; ++q_point)
+          for (unsigned int i=0; i<dofs_per_cell; ++i)
+            for (unsigned int j=0; j<dofs_per_cell; ++j)
+              {
+                cell_system_matrix (i, j)
+		  += (0.5                               *
+		      fe_values.shape_grad (i, q_point) *
+		      fe_values.shape_grad (j, q_point)
+		      +
+		      potential_values[q_point]          *
+		      fe_values.shape_value (i, q_point) *
+		      fe_values.shape_value (j, q_point)
+		      )
+		  * fe_values.JxW (q_point);
+              }
+	
+        cell->get_dof_indices (local_dof_indices);
+	
+        constraints
+	  .distribute_local_to_global (cell_system_matrix,
+				       local_dof_indices,
+				       system_matrix);
+      }
+    
+    system_matrix.compress (dealii::VectorOperation::add);
+    
   }
   
 
@@ -334,19 +401,24 @@ namespace sarah
   {
     dealii::TimerOutput::Scope time (timer, "solve");
     
-    std::vector<dealii::PETScWrappers::MPI::Vector> completely_distributed_solution
-      (n_x, dealii::PETScWrappers::MPI::Vector (locally_owned_dofs, mpi_communicator));
-
+    std::vector<dealii::PETScWrappers::MPI::Vector> completely_distributed_solution;
+    completely_distributed_solution.resize (n_x);
+    for (unsigned int i=0; i<n_x; ++i)
+      completely_distributed_solution[i].reinit (locally_owned_dofs,
+						 mpi_communicator);
+    
     // Solve using KrylovSchur
     dealii::SolverControl solver_control (dof_handler.n_dofs (), 1e-06);
-    dealii::SLEPcWrappers::SolverKrylovSchur solver (solver_control, mpi_communicator);
-    
-    solver.solve (system_matrix, mass_matrix, solution_value, completely_distributed_solution);
-    
+    dealii::SLEPcWrappers::SolverKrylovSchur solver (solver_control, mpi_communicator);    
+    solver.solve (system_matrix, mass_matrix, solution_value, completely_distributed_solution,
+		  completely_distributed_solution.size ());
+
     // Ensure that all ghost elements are also copied as necessary.
     for (unsigned int i=0; i<n_x; ++i)
       constraints.distribute (completely_distributed_solution[i]);
-    locally_relevant_solution = completely_distributed_solution;
+
+    for (unsigned int i=0; i<n_x; ++i)
+      locally_relevant_solution[i] = completely_distributed_solution[i];
 
     // Return the number of iterations (last step) of the solve.
     return solver_control.last_step ();
@@ -363,6 +435,11 @@ namespace sarah
   {
     dealii::TimerOutput::Scope time (timer, "output_results");
 
+    pcout << "   Values:";
+    for (unsigned int i=0; i<solution_value.size (); ++i)
+      pcout << "      " << i << ": " << solution_value[i]
+	    << std::endl;
+    
     dealii::DataOut<dim> data_out;
     data_out.attach_dof_handler (dof_handler);
     data_out.add_data_vector (locally_relevant_solution[0], "wavefunction");
@@ -401,6 +478,15 @@ namespace sarah
 
 	data_out.write_pvtu_record (master_output, filenames);
       }
+
+    {
+      std::ostringstream filename;
+      filename << "grid-" << cycle << ".gpl";
+      std::ofstream output (filename.str ().c_str ());
+      dealii::GridOut grid_out;
+      grid_out.write_gnuplot (triangulation, output);
+    }
+
   }
 
 
@@ -491,7 +577,7 @@ int main (int argc, char *argv[])
   
   try
     {
-      sarah::CatProblem<2> material_id ("step-0-material.prm");
+      sarah::CatProblem<2> material_id ("step-0.prm");
       material_id.run ();
     }
 
