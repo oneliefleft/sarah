@@ -53,7 +53,7 @@ namespace sarah
       const unsigned int dofs_per_cell = finite_element.dofs_per_cell;
       const unsigned int n_q_points    = quadrature.size ();
       
-      dealii::FullMatrix<double> cell_matrix (dofs_per_cell, dofs_per_cell); 
+      dealii::FullMatrix<ValueType> cell_matrix (dofs_per_cell, dofs_per_cell); 
       std::vector<dealii::types::global_dof_index> local_dof_indices (dofs_per_cell);
       
       typename dealii::DoFHandler<dim>::active_cell_iterator
