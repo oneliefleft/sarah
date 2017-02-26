@@ -200,7 +200,7 @@ namespace sarah
                    (dealii::Triangulation<dim>::smoothing_on_refinement |
                     dealii::Triangulation<dim>::smoothing_on_coarsening)),
     dof_handler (triangulation),
-    fe (dealii::FE_Q<dim> (2), 1),
+    fe (dealii::FE_Q<dim> (3), 1),
     n_pairs (3),
     // ---
     pcout (std::cout, (dealii::Utilities::MPI::this_mpi_process (mpi_communicator) == 0)),
@@ -536,7 +536,7 @@ namespace sarah
   void
   CatProblem<dim>::run ()
   {
-    const unsigned int n_cycles = 3;
+    const unsigned int n_cycles = 5;
     
     for (unsigned int cycle=0; cycle<n_cycles; ++cycle)
       {
