@@ -39,6 +39,7 @@
 #include <deal.II/numerics/matrix_tools.h>
 #include <deal.II/numerics/vector_tools.h>
 
+#include <sarah/error_estimator.h>
 #include <sarah/matrix_creator.h>
 
 #include <fstream>
@@ -513,13 +514,24 @@ namespace sarah
   {
     dealii::TimerOutput::Scope time (timer, "refine grid");
 
-    dealii::Vector<float> estimated_error_per_cell (triangulation.n_active_cells ());
+    dealii::Vector<double> estimated_error_per_cell (triangulation.n_active_cells ());
     
-    dealii::KellyErrorEstimator<dim>::estimate (dof_handler, dealii::QGauss<dim-1>(4),
-						typename dealii::FunctionMap<dim>::type (),
-						locally_relevant_solution[0],
-						estimated_error_per_cell);
+    // dealii::KellyErrorEstimator<dim>::estimate (dof_handler, dealii::QGauss<dim-1>(4),
+    // 						typename dealii::FunctionMap<dim>::type (),
+    // 						locally_relevant_solution[0],
+    // 						estimated_error_per_cell);
 
+    sarah::ErrorEstimator::estimate<dim> (fe, dof_handler, dealii::QGauss<dim>(4),
+					  // typename dealii::FunctionMap<dim>::type (),
+					  locally_relevant_solution[0],
+					  estimated_error_per_cell,
+					  mpi_communicator);
+
+    pcout << "   Estimated error per cell: ";
+    for (unsigned int i=0; i<estimated_error_per_cell.size (); ++i)
+      pcout << estimated_error_per_cell(i) << " ";
+    pcout << std::endl;
+    
     dealii::parallel::distributed::GridRefinement::
       refine_and_coarsen_fixed_number (triangulation,
 				       estimated_error_per_cell,
@@ -536,7 +548,7 @@ namespace sarah
   void
   CatProblem<dim>::run ()
   {
-    const unsigned int n_cycles = 5;
+    const unsigned int n_cycles = 2;
     
     for (unsigned int cycle=0; cycle<n_cycles; ++cycle)
       {
@@ -547,8 +559,8 @@ namespace sarah
 	  make_coarse_grid ();
 
 	else
-	  // refine_grid ();
-	  triangulation.refine_global ();
+	  refine_grid ();
+	  // triangulation.refine_global ();
 	
 	pcout << "   Number of active cells:       "
 	      << triangulation.n_global_active_cells ()

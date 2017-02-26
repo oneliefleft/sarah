@@ -56,7 +56,7 @@ namespace sarah
 		const dealii::DoFHandler<dim,spacedim>    &dof_handler,
 		const dealii::Quadrature<dim>             &quadrature,
 		const dealii::PETScWrappers::MPI::Vector  &vector,
-		dealii::Vector<ValueType>                 &error,
+		dealii::Vector<ValueType>                 &error_per_cell,
 		MPI_Comm                                  &mpi_communicator);
     
   } // namespace ErrorEstimator

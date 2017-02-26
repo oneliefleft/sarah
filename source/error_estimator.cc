@@ -42,7 +42,7 @@ namespace sarah
 	      const dealii::DoFHandler<dim,spacedim>    &dof_handler,
 	      const dealii::Quadrature<dim>             &quadrature,
 	      const dealii::PETScWrappers::MPI::Vector  &vector,
-	      dealii::Vector<ValueType>                 &error,
+	      dealii::Vector<ValueType>                 &error_per_cell,
 	      MPI_Comm                                  &mpi_communicator)
     {
       dealii::FEValues<dim> fe_values (finite_element, quadrature,
@@ -53,7 +53,6 @@ namespace sarah
       const unsigned int dofs_per_cell = finite_element.dofs_per_cell;
       const unsigned int n_q_points    = quadrature.size ();
       
-      dealii::Vector<double> cell_matrix (dofs_per_cell); 
       std::vector<dealii::types::global_dof_index> local_dof_indices (dofs_per_cell);
       
       typename dealii::DoFHandler<dim>::active_cell_iterator
@@ -63,14 +62,15 @@ namespace sarah
       for (; cell!=endc; ++cell)
 	if (cell->subdomain_id () == dealii::Utilities::MPI::this_mpi_process (mpi_communicator))
 	  {
-	    cell_matrix = 0;
 	    fe_values.reinit (cell);
 	    
 	    for (unsigned int q_point=0; q_point<n_q_points; ++q_point)
 	      for (unsigned int j=0; j<dofs_per_cell; ++j)
 		  {
 		    // Integrate volume of the function in this cell.
-
+		    error_per_cell(j) +=
+		      fe_values.shape_value (j,q_point) *
+		      fe_values.JxW (q_point);
 		  }
 
 	  } // cell!=endc
@@ -95,3 +95,4 @@ sarah::ErrorEstimator::estimate<2, 2, double> (const dealii::FiniteElement<2,2> 
 					       const dealii::PETScWrappers::MPI::Vector &,
 					       dealii::Vector<double>                   &,
 					       MPI_Comm                                 &);
+
