@@ -44,3 +44,5 @@ cmake_install.cmake
 # Project generated/required files
 aphex
 !aphex.cc
+bin/*
+!bin/*.prm

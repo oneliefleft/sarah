@@ -2,7 +2,7 @@
 # top level CMakeLists.txt
 CMAKE_MINIMUM_REQUIRED (VERSION 2.8.8)
 
-SET (TARGET "step-0")
+SET (TARGET "diabelka")
 
 FIND_PACKAGE (deal.II 8.5.0 REQUIRED
   HINTS ${deal.II_DIR} ${DEAL_II_DIR} ../ ../../ $ENV{DEAL_II_DIR}
@@ -44,6 +44,8 @@ ADD_LIBRARY(sarah
   # tools
   source/error_estimator.cc
   source/matrix_creator.cc
+  # models
+  source/cat_problem.cc
   )
 
 DEAL_II_SETUP_TARGET (sarah)
