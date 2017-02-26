@@ -2,15 +2,15 @@
 # ---------------------
 # The number of times the 1-cell coarse mesh should be refined globally for
 # our computations.
-set Global mesh refinement steps         = 3 # 3 minimal that makes sense
-
-# The number of eigenfunctions to be used for error indicators.
-set Number of eigenfunctions             = 3
-
-# The number of eigenvalues/eigenfunctions to be computed.
-set Number of eigenvalues/eigenfunctions = 3
+set Global mesh refinement steps = 3 # 3 minimal that makes sense
 
 # A functional description of the potential.
-set Potential                            = 0.5 * ( x*x + y*y )
+set Potential                    = 0.5 * ( x*x + y*y )
+
+# The number of eigenpairs to be computed.
+set Number of eigenpairs         = 3
+
+# The number of eigenfunctions to be used for error indicators.
+set Number of eigenfunctions     = 3
 
 # -1.*((1./(cosh (sqrt((x-sqrt(12.5))^2+(y-sqrt(12.5))^2)))) + (1./(cosh (sqrt((x+sqrt(12.5))^2+(y+sqrt(12.5))^2)))))
