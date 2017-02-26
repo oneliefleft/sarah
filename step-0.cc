@@ -202,7 +202,7 @@ namespace sarah
                     dealii::Triangulation<dim>::smoothing_on_coarsening)),
     dof_handler (triangulation),
     fe (dealii::FE_Q<dim> (3), 1),
-    n_pairs (3),
+    n_pairs (1),
     // ---
     pcout (std::cout, (dealii::Utilities::MPI::this_mpi_process (mpi_communicator) == 0)),
     timer (mpi_communicator, pcout,
