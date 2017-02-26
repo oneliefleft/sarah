@@ -42,6 +42,7 @@ INCLUDE_DIRECTORIES (include/sarah)
 
 ADD_LIBRARY(sarah
   # tools
+  source/error_estimator.cc
   source/matrix_creator.cc
   )
 
