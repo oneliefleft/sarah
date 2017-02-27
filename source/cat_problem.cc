@@ -16,7 +16,7 @@ namespace sarah
                    (dealii::Triangulation<dim>::smoothing_on_refinement |
                     dealii::Triangulation<dim>::smoothing_on_coarsening)),
     dof_handler (triangulation),
-    fe (dealii::FE_Q<dim> (1), 1),
+    fe (dealii::FE_Q<dim> (2), 1),
     n_pairs (1),
     // ---
     pcout (std::cout, (dealii::Utilities::MPI::this_mpi_process (mpi_communicator) == 0)),
@@ -24,14 +24,23 @@ namespace sarah
 	   dealii::TimerOutput::summary,
 	   dealii::TimerOutput::wall_times)
   {
-    parameters.declare_entry ("Global mesh refinement steps", "5",
+    parameters.declare_entry ("Global grid refinement steps", "5",
                               dealii::Patterns::Integer (0, 20),
                               "The number of times the 1-cell coarse mesh should "
                               "be refined globally for our computations.");
 
+    parameters.declare_entry ("Adaptive grid refinement steps", "5",
+                              dealii::Patterns::Integer (0, 20),
+                              "The number of times the n-cell coarse mesh should "
+                              "be refined adaptively for our computations.");
+
     parameters.declare_entry ("Potential", "0",
                               dealii::Patterns::Anything (),
                               "A functional description of the potential.");
+
+    parameters.declare_entry ("Error function", "0",
+                              dealii::Patterns::Anything (),
+			      "A functional description of the error function.");
     
     parameters.declare_entry ("Number of eigenpairs", "5",
                               dealii::Patterns::Integer (0, 100),
@@ -70,7 +79,7 @@ namespace sarah
     // input file.
     dealii::GridGenerator::hyper_cube (triangulation, -5, 5);
     
-    triangulation.refine_global (parameters.get_integer ("Global mesh refinement steps"));
+    triangulation.refine_global (parameters.get_integer ("Global grid refinement steps"));
   }
 
 
@@ -165,6 +174,7 @@ namespace sarah
                           typename dealii::FunctionParser<dim>::ConstMap ());
     
     std::vector<double> potential_values (n_q_points);
+
     
     typename dealii::DoFHandler<dim>::active_cell_iterator
       cell = dof_handler.begin_active (),
@@ -258,6 +268,7 @@ namespace sarah
 	  << std::endl;
     for (unsigned int i=0; i<solution_value.size (); ++i)
       pcout << "      " << i << ": " << solution_value[i]
+	    << " error " << std::fabs (solution_value[i]-i-1)
 	    << std::endl;
     
     dealii::DataOut<dim> data_out;
@@ -330,22 +341,41 @@ namespace sarah
     dealii::TimerOutput::Scope time (timer, "refine grid");
 
     dealii::Vector<double> estimated_error_per_cell (triangulation.n_active_cells ());
-    
-    // dealii::KellyErrorEstimator<dim>::estimate (dof_handler, dealii::QGauss<dim-1>(4),
-    // 						typename dealii::FunctionMap<dim>::type (),
-    // 						locally_relevant_solution[0],
-    // 						estimated_error_per_cell);
 
+#undef  KELLY
+#define VOLUME
+    
+#ifdef KELLY
+    pcout << "Kelly: eigenfunction";
+
+    // "Standard" Kelly error estimate applied to a super position of
+    // the lowest k eigenfunctions.
+    dealii::KellyErrorEstimator<dim>::estimate (dof_handler, dealii::QGauss<dim-1>(4),
+     						typename dealii::FunctionMap<dim>::type (),
+						locally_relevant_solution[0],
+						estimated_error_per_cell);
+#endif
+#ifdef VOLUME
+    pcout << "Physics-based: Volume";
+    
+    // This is a function description of the error - in short, it is
+    // the "exp" projected potential.
+    dealii::FunctionParser<dim> error_function;
+    error_function.initialize (dealii::FunctionParser<dim>::default_variable_names (),
+			       parameters.get ("Error function"),
+			       typename dealii::FunctionParser<dim>::ConstMap ());
+    
     sarah::ErrorEstimator::estimate<dim> (fe, dof_handler, dealii::QGauss<dim>(4),
-					  // typename dealii::FunctionMap<dim>::type (),
-					  locally_relevant_solution[0],
+					  error_function,
 					  estimated_error_per_cell,
 					  mpi_communicator);
-
-    pcout << "   Estimated error per cell: ";
-    for (unsigned int i=0; i<estimated_error_per_cell.size (); ++i)
-      pcout << estimated_error_per_cell(i) << " ";
+#endif
     pcout << std::endl;
+
+    // pcout << "   Estimated error per cell: ";
+    // for (unsigned int i=0; i<estimated_error_per_cell.size (); ++i)
+    //   pcout << estimated_error_per_cell(i) << " ";
+    // pcout << std::endl;
     
     dealii::parallel::distributed::GridRefinement::
       refine_and_coarsen_fixed_number (triangulation,
@@ -363,7 +393,7 @@ namespace sarah
   void
   CatProblem<dim>::run ()
   {
-    const unsigned int n_cycles = 5;
+    const unsigned int n_cycles = parameters.get_integer ("Adaptive grid refinement steps");;
     
     for (unsigned int cycle=0; cycle<n_cycles; ++cycle)
       {
