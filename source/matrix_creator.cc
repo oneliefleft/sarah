@@ -91,18 +91,4 @@ namespace sarah
   
 } // namepsace sarah
 
-template void
-sarah::MatrixCreator::create_mass_matrix<3, 3, double> (const dealii::FiniteElement<3,3>         &,
-							const dealii::DoFHandler<3,3>            &,
-							const dealii::Quadrature<3>              &,
-							dealii::PETScWrappers::MPI::SparseMatrix &,
-							dealii::ConstraintMatrix                 &,
-							MPI_Comm                                 &);
-
-template void
-sarah::MatrixCreator::create_mass_matrix<2, 2, double> (const dealii::FiniteElement<2,2>         &,
-							const dealii::DoFHandler<2,2>            &,
-							const dealii::Quadrature<2>              &,
-							dealii::PETScWrappers::MPI::SparseMatrix &,
-							dealii::ConstraintMatrix                 &,
-							MPI_Comm                                 &);
+#include "matrix_creator.inst"
