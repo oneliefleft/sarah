@@ -36,6 +36,7 @@
 #include <deal.II/lac/petsc_parallel_sparse_matrix.h>
 #include <deal.II/lac/vector.h>
 
+#include <deal.II/base/function_parser.h>
 #include <deal.II/base/quadrature_lib.h>
 
 #ifndef __sarah_error_estimator_h
@@ -48,17 +49,29 @@ namespace sarah
   {
 
     /**
-     * 
+     * Estimate an error based on a finite elemnt function.
      */
     template<int dim, int spacedim = dim, typename ValueType = double>
       void
       estimate (const dealii::FiniteElement<dim,spacedim> &finite_element,
 		const dealii::DoFHandler<dim,spacedim>    &dof_handler,
 		const dealii::Quadrature<dim>             &quadrature,
-		const dealii::PETScWrappers::MPI::Vector  &vector,
+		const dealii::PETScWrappers::MPI::Vector  &fe_function,
 		dealii::Vector<ValueType>                 &error_per_cell,
 		MPI_Comm                                  &mpi_communicator);
-    
+
+    /**
+     * Estimate an error based on a function parser.
+     */
+    template<int dim, int spacedim = dim, typename ValueType = double>
+      void
+      estimate (const dealii::FiniteElement<dim,spacedim> &finite_element,
+		const dealii::DoFHandler<dim,spacedim>    &dof_handler,
+		const dealii::Quadrature<dim>             &quadrature,
+		const dealii::FunctionParser<dim>         &function_parser,
+		dealii::Vector<ValueType>                 &error_per_cell,
+		MPI_Comm                                  &mpi_communicator);
+      
   } // namespace ErrorEstimator
   
 } // namepsace sarah
