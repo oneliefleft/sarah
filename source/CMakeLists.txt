@@ -6,7 +6,4 @@ INCLUDE_DIRECTORIES(BEFORE ${CMAKE_CURRENT_BINARY_DIR})
 #   vector_creator.cc
 #   )
 
-FILE(GLOB _header
-  ${CMAKE_SOURCE_DIR}/include/mandy/*.h
-  )
 
