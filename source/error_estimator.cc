@@ -151,27 +151,5 @@ namespace sarah
   
 } // namepsace sarah
 
-template void
-sarah::ErrorEstimator::estimate<3, 3, double> (const dealii::FiniteElement<3,3>         &,
-					       const dealii::DoFHandler<3,3>            &,
-					       const dealii::Quadrature<3>              &,
-					       const dealii::PETScWrappers::MPI::Vector &,
-					       dealii::Vector<double>                   &,
-					       MPI_Comm                                 &);
+#include "error_estimator.inst"
 
-template void
-sarah::ErrorEstimator::estimate<2, 2, double> (const dealii::FiniteElement<2,2>         &,
-					       const dealii::DoFHandler<2,2>            &,
-					       const dealii::Quadrature<2>              &,
-					       const dealii::PETScWrappers::MPI::Vector &,
-					       dealii::Vector<double>                   &,
-					       MPI_Comm                                 &);
-
-template
-void
-sarah::ErrorEstimator::estimate<2, 2, double> (const dealii::FiniteElement<2,2> &,
-					       const dealii::DoFHandler<2,2>    &,
-					       const dealii::Quadrature<2>      &,
-					       const dealii::FunctionParser<2>  &,
-					       dealii::Vector<double>           &,
-					       MPI_Comm                         &);

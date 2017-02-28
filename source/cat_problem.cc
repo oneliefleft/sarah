@@ -444,3 +444,4 @@ namespace sarah
 } // namespace sarah
 
 template class sarah::CatProblem<2>;
+template class sarah::CatProblem<3>;
