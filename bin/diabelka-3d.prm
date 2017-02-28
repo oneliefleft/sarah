@@ -1,0 +1,23 @@
+# Listing of Parameters
+# ---------------------
+# The number of times the 1-cell coarse mesh should be refined globally for
+# our computations.
+set Global grid refinement steps = 5
+
+# The number of times the n-cell coarse mesh should be refined globally for
+# our computations.
+set Adaptive grid refinement steps = 5
+
+# A functional description of the potential.
+set Potential                    = 0.5 * ( x*x + y*y +z*z )
+
+# A functional description of the potential.
+set Error function                    = exp ( -0.5 * ( x*x + y*y + z*z) )
+
+# The number of eigenpairs to be computed.
+set Number of eigenpairs         = 3
+
+# The number of eigenfunctions to be used for error indicators.
+set Number of eigenfunctions     = 3
+
+# -1.*((1./(cosh (sqrt((x-sqrt(12.5))^2+(y-sqrt(12.5))^2)))) + (1./(cosh (sqrt((x+sqrt(12.5))^2+(y+sqrt(12.5))^2)))))
