@@ -2,10 +2,17 @@
 # ---------------------
 # The number of times the 1-cell coarse mesh should be refined globally for
 # our computations.
-set Global mesh refinement steps = 5
+set Global grid refinement steps = 5
+
+# The number of times the n-cell coarse mesh should be refined globally for
+# our computations.
+set Adaptive grid refinement steps = 5
 
 # A functional description of the potential.
 set Potential                    = 0.5 * ( x*x + y*y )
+
+# A functional description of the potential.
+set Error function                    = exp ( -0.5 * ( x*x + y*y ) )
 
 # The number of eigenpairs to be computed.
 set Number of eigenpairs         = 3
