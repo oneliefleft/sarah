@@ -40,6 +40,10 @@ namespace sarah
 
     parameters.declare_entry ("Error function", "0",
                               dealii::Patterns::Anything (),
+                              "A functional description of the potential.");
+
+    parameters.declare_entry ("Error function", "0",
+                              dealii::Patterns::Anything (),
 			      "A functional description of the error function.");
     
     parameters.declare_entry ("Number of eigenpairs", "5",
@@ -181,36 +185,37 @@ namespace sarah
       endc = dof_handler.end ();
     
     for (; cell!=endc; ++cell)
-      {
-        fe_values.reinit (cell);
-        cell_system_matrix = 0;
-	
-        potential.value_list (fe_values.get_quadrature_points (),
-                              potential_values);
-	
-        for (unsigned int q_point=0; q_point<n_q_points; ++q_point)
-          for (unsigned int i=0; i<dofs_per_cell; ++i)
-            for (unsigned int j=0; j<dofs_per_cell; ++j)
-              {
-                cell_system_matrix (i, j)
-		  += (0.5                               *
-		      fe_values.shape_grad (i, q_point) *
-		      fe_values.shape_grad (j, q_point)
-		      +
-		      potential_values[q_point]          *
-		      fe_values.shape_value (i, q_point) *
-		      fe_values.shape_value (j, q_point)
-		      )
-		  * fe_values.JxW (q_point);
-              }
-	
-        cell->get_dof_indices (local_dof_indices);
-	
-        constraints
-	  .distribute_local_to_global (cell_system_matrix,
-				       local_dof_indices,
-				       system_matrix);
-      }
+      if (cell->subdomain_id () == dealii::Utilities::MPI::this_mpi_process (mpi_communicator))
+	{
+	  fe_values.reinit (cell);
+	  cell_system_matrix = 0;
+	  
+	  potential.value_list (fe_values.get_quadrature_points (),
+				potential_values);
+	  
+	  for (unsigned int q_point=0; q_point<n_q_points; ++q_point)
+	    for (unsigned int i=0; i<dofs_per_cell; ++i)
+	      for (unsigned int j=0; j<dofs_per_cell; ++j)
+		{
+		  cell_system_matrix (i, j)
+		    += (0.5                               *
+			fe_values.shape_grad (i, q_point) *
+			fe_values.shape_grad (j, q_point)
+			+
+			potential_values[q_point]          *
+			fe_values.shape_value (i, q_point) *
+			fe_values.shape_value (j, q_point)
+			)
+		    * fe_values.JxW (q_point);
+		}
+	  
+	  cell->get_dof_indices (local_dof_indices);
+	  
+	  constraints
+	    .distribute_local_to_global (cell_system_matrix,
+					 local_dof_indices,
+					 system_matrix);
+	}
     
     system_matrix.compress (dealii::VectorOperation::add);
     
