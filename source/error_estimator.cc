@@ -74,6 +74,8 @@ namespace sarah
 	    fe_values.reinit (cell);
 
 	    fe_values.get_function_values (fe_function, function_values);
+
+	    const double cell_diameter = cell->diameter ();
 	    
 	    for (unsigned int q_point=0; q_point<n_q_points; ++q_point)
 	      for (unsigned int j=0; j<dofs_per_cell; ++j)
@@ -82,7 +84,7 @@ namespace sarah
 		    error_per_cell (cell_id) +=
 		      function_values[q_point]          *
 		      fe_values.shape_value (j,q_point) *
-		      fe_values.JxW (q_point);
+		      fe_values.JxW (q_point) / cell_diameter;
 		  }
 
 	    // This should *never* happen, but sometimes it does....
