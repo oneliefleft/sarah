@@ -59,9 +59,7 @@ namespace sarah
       
       // Let there be a cell identification number. This
       // identification has nothing to do with the internal
-      // description of the cell, though it probably should.
-      //
-      // Perhaps there is a dealii::type::??? for this?
+      // description of the cell.
       unsigned int cell_id = 0;
       
       typename dealii::DoFHandler<dim>::active_cell_iterator
@@ -85,7 +83,7 @@ namespace sarah
 		      function_values[q_point]          *
 		      fe_values.shape_value (j,q_point) *
 		      fe_values.JxW (q_point) / cell_diameter;
-		  }
+		 } 
 
 	    // This should *never* happen, but sometimes it does....
 	    error_per_cell (cell_id) = std::fabs (error_per_cell (cell_id));
