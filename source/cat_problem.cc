@@ -462,8 +462,6 @@ namespace sarah
         pcout << std::endl;
 	
       } // for cycle<n_cycles
-
-    timer.reset ();
   } 
   
 } // namespace sarah
