@@ -40,10 +40,6 @@ namespace sarah
 
     parameters.declare_entry ("Error function", "0",
                               dealii::Patterns::Anything (),
-                              "A functional description of the potential.");
-
-    parameters.declare_entry ("Error function", "0",
-                              dealii::Patterns::Anything (),
 			      "A functional description of the error function.");
     
     parameters.declare_entry ("Number of eigenpairs", "5",
@@ -271,10 +267,27 @@ namespace sarah
     
     pcout << "   Values:"
 	  << std::endl;
-    for (unsigned int i=0; i<solution_value.size (); ++i)
-      pcout << "      " << i << ": " << solution_value[i]
-	    << " error " << std::fabs (solution_value[i]-i-1)
-	    << std::endl;
+
+    switch (dim)
+      {
+      case 2:
+	for (unsigned int i=0; i<solution_value.size (); ++i)
+	  pcout << "      " << i << ": " << solution_value[i]
+		<< " error " << std::fabs (solution_value[i]-i-1)
+		<< std::endl;
+	break;
+
+      case 3:
+	for (unsigned int i=0; i<solution_value.size (); ++i)
+	  pcout << "      " << i << ": " << solution_value[i]
+		<< " error " << std::fabs (solution_value[i]-i-0.5)
+		<< std::endl;
+	break;
+
+      default:
+	AssertThrow (false, dealii::ExcNotImplemented ());
+
+      } // switch (dim)
     
     dealii::DataOut<dim> data_out;
     data_out.attach_dof_handler (dof_handler);
@@ -421,6 +434,16 @@ namespace sarah
 	pcout << "   Number of degrees of freedom: "
 	      << dof_handler.n_dofs ()
 	      << std::endl;
+
+	// According to dealii's documentation, this function is
+	// questionable for distributed grids. In fact, the
+	// computation blows up.
+	//
+	// pcout << "   Number of degrees of freedom per process: ";
+	// for (unsigned int p=0; p<dealii::Utilities::MPI::n_mpi_processes (mpi_communicator); ++p)
+	    // pcout << (p==0 ? ' ' : '+')
+	    // 	  << (dealii::DoFTools::count_dofs_with_subdomain_association (dof_handler, p));
+	// pcout << std::endl;
 	
 	assemble_system ();
 
@@ -439,6 +462,8 @@ namespace sarah
         pcout << std::endl;
 	
       } // for cycle<n_cycles
+
+    timer.reset ();
   } 
   
 } // namespace sarah
