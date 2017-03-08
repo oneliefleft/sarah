@@ -280,7 +280,7 @@ namespace sarah
       case 3:
 	for (unsigned int i=0; i<solution_value.size (); ++i)
 	  pcout << "      " << i << ": " << solution_value[i]
-		<< " error " << std::fabs (solution_value[i]-i-0.5)
+		<< " error " << std::fabs (solution_value[i]-i-1.5)
 		<< std::endl;
 	break;
 
@@ -411,7 +411,7 @@ namespace sarah
   void
   CatProblem<dim>::run ()
   {
-    const unsigned int n_cycles = parameters.get_integer ("Adaptive grid refinement steps");;
+    const unsigned int n_cycles = parameters.get_integer ("Adaptive grid refinement steps");
     
     for (unsigned int cycle=0; cycle<n_cycles; ++cycle)
       {
