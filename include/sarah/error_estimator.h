@@ -51,25 +51,25 @@ namespace sarah
     /**
      * Estimate an error based on a finite elemnt function.
      */
-    template<int dim, int spacedim = dim, typename ValueType = double>
+    template<int dim, int spacedim = dim, typename Value = double>
       void
       estimate (const dealii::FiniteElement<dim,spacedim> &finite_element,
 		const dealii::DoFHandler<dim,spacedim>    &dof_handler,
 		const dealii::Quadrature<dim>             &quadrature,
 		const dealii::PETScWrappers::MPI::Vector  &fe_function,
-		dealii::Vector<ValueType>                 &error_per_cell,
+		dealii::Vector<Value>                     &error_per_cell,
 		MPI_Comm                                  &mpi_communicator);
 
     /**
      * Estimate an error based on a function parser.
      */
-    template<int dim, int spacedim = dim, typename ValueType = double>
+    template<int dim, int spacedim = dim, typename Value = double>
       void
       estimate (const dealii::FiniteElement<dim,spacedim> &finite_element,
 		const dealii::DoFHandler<dim,spacedim>    &dof_handler,
 		const dealii::Quadrature<dim>             &quadrature,
 		const dealii::FunctionParser<dim>         &function_parser,
-		dealii::Vector<ValueType>                 &error_per_cell,
+		dealii::Vector<Value>                     &error_per_cell,
 		MPI_Comm                                  &mpi_communicator);
       
   } // namespace ErrorEstimator

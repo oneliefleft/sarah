@@ -291,7 +291,7 @@ namespace sarah
     
     dealii::DataOut<dim> data_out;
     data_out.attach_dof_handler (dof_handler);
-    data_out.add_data_vector (locally_relevant_solution[0], "wavefunction");
+    data_out.add_data_vector (locally_relevant_solution[0], "state-function");
     
     dealii::Vector<double> projected_potential (dof_handler.n_dofs ());
     {
@@ -310,7 +310,7 @@ namespace sarah
 
     data_out.build_patches ();
     
-    const std::string filename = ("wavefunction-" +
+    const std::string filename = ("state-function-" +
                                   dealii::Utilities::int_to_string (cycle, 2) +
                                   "." +
                                   dealii::Utilities::int_to_string
@@ -326,12 +326,12 @@ namespace sarah
 	for (unsigned int i=0;
 	     i<dealii::Utilities::MPI::n_mpi_processes (mpi_communicator);
 	     ++i)
-	  filenames.push_back ("wavefunction-" +
+	  filenames.push_back ("state-function-" +
 			       dealii::Utilities::int_to_string (cycle, 2) +
 			       "." +
 			       dealii::Utilities::int_to_string (i, 4) +
 			       ".vtu");
-	std::ofstream master_output (("wavefunction-" +
+	std::ofstream master_output (("state-function-" +
 				      dealii::Utilities::int_to_string (cycle, 2) +
 				      ".pvtu").c_str ());
 
@@ -357,6 +357,7 @@ namespace sarah
   void CatProblem<dim>::refine_grid ()
   {
     dealii::TimerOutput::Scope time (timer, "refine grid");
+    pcout << "   Refine grid: ";
 
     dealii::Vector<double> estimated_error_per_cell (triangulation.n_active_cells ());
 
@@ -364,7 +365,7 @@ namespace sarah
 #define VOLUME
     
 #ifdef KELLY
-    pcout << "Kelly: eigenfunction";
+    pcout << "Kelly (state-function)";
 
     // "Standard" Kelly error estimate applied to a super position of
     // the lowest k eigenfunctions.
@@ -374,7 +375,7 @@ namespace sarah
 						estimated_error_per_cell);
 #endif
 #ifdef VOLUME
-    pcout << "Physics-based: Volume";
+    pcout << "Physics-based (Volume)";
     
     // This is a function description of the error - in short, it is
     // the "exp" projected potential.

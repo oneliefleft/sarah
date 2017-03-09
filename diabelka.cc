@@ -2,9 +2,10 @@
 
 #include <sarah/cat_problem.h>
 
+#include <boost/program_options.hpp>
+
 #include <fstream>
 #include <iostream>
-
 #include <algorithm>    // std::transform
 #include <functional>   // std::plus
 
@@ -16,6 +17,30 @@ int main (int argc, char *argv[])
 {
   // Initialise MPI
   dealii::Utilities::MPI::MPI_InitFinalize mpi_initialization (argc, argv, 1);
+
+#ifdef RUBBISH
+  // Parse the commandline. For this to work we need to compile
+  // deal.II with external boost.
+  boost::program_options::options_description description {"Options"};
+  description.add_options ()
+    ("help", "Help screen")
+    ("prm", boost::program_options::value<string> ()->default_value ("aphex.prm"), "Parameter file");
+
+ 
+  boost::program_options::variables_map vmap;
+  boost::program_options::store
+    (boost::program_options::parse_command_line (argc, argv, description), vmap);
+  
+  if (vmap.count ("help"))
+	std::cout << description
+		  << std::endl;
+  
+  else if (vmap.count ("prm"))
+    std::cout << "Parameter file: " << vmap["prm"].as<string>
+	      << std::endl;
+  
+  // else if (...)
+#endif
   
   try
     {
