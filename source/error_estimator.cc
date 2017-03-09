@@ -36,13 +36,13 @@ namespace sarah
   namespace ErrorEstimator
   {
     
-    template<int dim, int spacedim = dim, typename ValueType = double>
+    template<int dim, int spacedim = dim, typename Value = double>
     void
     estimate (const dealii::FiniteElement<dim,spacedim> &finite_element,
 	      const dealii::DoFHandler<dim,spacedim>    &dof_handler,
 	      const dealii::Quadrature<dim>             &quadrature,
 	      const dealii::PETScWrappers::MPI::Vector  &fe_function,
-	      dealii::Vector<ValueType>                 &error_per_cell,
+	      dealii::Vector<Value>                     &error_per_cell,
 	      MPI_Comm                                  &mpi_communicator)
     {
       dealii::FEValues<dim> fe_values (finite_element, quadrature,
@@ -55,7 +55,7 @@ namespace sarah
       
       std::vector<dealii::types::global_dof_index> local_dof_indices (dofs_per_cell);
 
-      std::vector<ValueType> function_values (n_q_points);
+      std::vector<Value> function_values (n_q_points);
       
       // Let there be a cell identification number. This
       // identification has nothing to do with the internal
@@ -91,13 +91,13 @@ namespace sarah
 	  } // cell!=endc
     }
 
-    template<int dim, int spacedim = dim, typename ValueType = double>
+    template<int dim, int spacedim = dim, typename Value = double>
     void
     estimate (const dealii::FiniteElement<dim,spacedim> &finite_element,
 	      const dealii::DoFHandler<dim,spacedim>    &dof_handler,
 	      const dealii::Quadrature<dim>             &quadrature,
 	      const dealii::FunctionParser<dim>         &function_parser,
-	      dealii::Vector<ValueType>                 &error_per_cell,
+	      dealii::Vector<Value>                     &error_per_cell,
 	      MPI_Comm                                  &mpi_communicator)
     {
       dealii::FEValues<dim> fe_values (finite_element, quadrature,
@@ -110,7 +110,7 @@ namespace sarah
       
       std::vector<dealii::types::global_dof_index> local_dof_indices (dofs_per_cell);
 
-      std::vector<ValueType> function_values (n_q_points);
+      std::vector<Value> function_values (n_q_points);
       
       // Let there be a cell identification number. This
       // identification has nothing to do with the internal
@@ -131,6 +131,8 @@ namespace sarah
 	    function_parser.value_list (fe_values.get_quadrature_points (),
 					function_values);
 	    
+	    const double cell_diameter = cell->diameter ();
+
 	    for (unsigned int q_point=0; q_point<n_q_points; ++q_point)
 	      for (unsigned int j=0; j<dofs_per_cell; ++j)
 		  {
@@ -138,7 +140,7 @@ namespace sarah
 		    error_per_cell (cell_id) +=
 		      function_values[q_point]          *
 		      fe_values.shape_value (j,q_point) *
-		      fe_values.JxW (q_point);
+		      fe_values.JxW (q_point) / cell_diameter;
 		  }
 
 	    // This should *never* happen, but sometimes it does....
