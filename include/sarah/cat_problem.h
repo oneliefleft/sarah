@@ -129,6 +129,11 @@ namespace sarah
     dealii::DoFHandler<dim> dof_handler;
 
     /**
+     * Polynomial order.
+     */
+    const unsigned int order;
+
+    /**
      * Scalar valued finite element primarily used for interpolating
      * material iudentification.
      */

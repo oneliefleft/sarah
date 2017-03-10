@@ -70,7 +70,7 @@ int main (int argc, char *argv[])
 		     << std::endl << std::endl;
 	}
       
-      sarah::CatProblem<3> diabelka (args[0]);
+      sarah::CatProblem<2> diabelka (args[0]);
       diabelka.run ();
     }
 
