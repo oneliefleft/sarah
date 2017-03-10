@@ -2,11 +2,14 @@
 # ---------------------
 # The number of times the 1-cell coarse mesh should be refined globally for
 # our computations.
-set Global grid refinement steps = 5
+set Global grid refinement steps = 4
 
 # The number of times the n-cell coarse mesh should be refined globally for
 # our computations.
-set Adaptive grid refinement steps = 5
+set Adaptive grid refinement steps = 9
+
+# The strategy to be used for adaptive grids.
+set Adaptive grid strategy         = Kelly
 
 # A functional description of the potential.
 set Potential                    = 0.5 * ( x*x + y*y +z*z )

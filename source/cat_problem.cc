@@ -35,6 +35,10 @@ namespace sarah
                               "The number of times the n-cell coarse mesh should "
                               "be refined adaptively for our computations.");
 
+    parameters.declare_entry ("Adaptive grid strategy", "Global",
+                              dealii::Patterns::Selection ("Global|Kelly|Potential"),
+                              "The strategy to be used for adaptive grids.");
+
     parameters.declare_entry ("Potential", "0",
                               dealii::Patterns::Anything (),
                               "A functional description of the potential.");
@@ -356,51 +360,63 @@ namespace sarah
   void CatProblem<dim>::refine_grid ()
   {
     dealii::TimerOutput::Scope time (timer, "refine grid");
-    pcout << "   Refine grid: ";
 
-    dealii::Vector<float> estimated_error_per_cell (triangulation.n_active_cells ());
+    std::string strategy = parameters.get ("Adaptive grid strategy");
 
-#define  KELLY
-    //#define VOLUME
+    pcout << "   Refine grid: "
+	  << strategy
+	  << std::endl;
 
-#ifdef KELLY
-    pcout << "Kelly (state-function)";
+    if (strategy=="Global")
+      {
+	triangulation.refine_global ();
+      }
+    else
+      {
+	dealii::Vector<float> estimated_error_per_cell (triangulation.n_active_cells ());
 
-    // "Standard" Kelly error estimate applied to a super position of
-    // the lowest k eigenfunctions.
-    dealii::KellyErrorEstimator<dim>::estimate (dof_handler, dealii::QGauss<dim-1> (order+2),
-     						typename dealii::FunctionMap<dim>::type (),
-						locally_relevant_solution[0],
-						estimated_error_per_cell);
-#endif
-#ifdef VOLUME
-    pcout << "Physics-based (Volume)";
+	if (strategy=="Kelly")
+
+	  {
+	    // "Standard" Kelly error estimate applied to a super position of
+	    // the lowest k eigenfunctions.
+	    dealii::KellyErrorEstimator<dim>::estimate (dof_handler, dealii::QGauss<dim-1> (order+2),
+							typename dealii::FunctionMap<dim>::type (),
+							locally_relevant_solution[0],
+							estimated_error_per_cell);
+	  } // Kelly
+
+	else if (strategy=="Potential")
     
-    // This is a function description of the error - in short, it is
-    // the "exp" projected potential.
-    dealii::FunctionParser<dim> error_function;
-    error_function.initialize (dealii::FunctionParser<dim>::default_variable_names (),
-			       parameters.get ("Error function"),
-			       typename dealii::FunctionParser<dim>::ConstMap ());
-    
-    sarah::ErrorEstimator::estimate<dim> (fe, dof_handler, dealii::QGauss<dim> (order+2),
-					  error_function,
-					  estimated_error_per_cell,
-					  mpi_communicator);
-#endif
-    pcout << std::endl;
+	  {
+	    // This is a function description of the error - in short, it is
+	    // the "exp" projected potential.
+	    dealii::FunctionParser<dim> error_function;
+	    error_function.initialize (dealii::FunctionParser<dim>::default_variable_names (),
+				       parameters.get ("Error function"),
+				       typename dealii::FunctionParser<dim>::ConstMap ());
+	    
+	    sarah::ErrorEstimator::estimate<dim> (fe, dof_handler, dealii::QGauss<dim> (order+2),
+						  error_function,
+						  estimated_error_per_cell,
+						  mpi_communicator);
 
-    // pcout << "   Estimated error per cell: ";
-    // for (unsigned int i=0; i<estimated_error_per_cell.size (); ++i)
-    //   pcout << estimated_error_per_cell(i) << " ";
-    // pcout << std::endl;
-    
-    dealii::parallel::distributed::GridRefinement::
-      refine_and_coarsen_fixed_number (triangulation,
-				       estimated_error_per_cell,
-				       0.250, 0.000);
+	    dealii::parallel::distributed::GridRefinement::
+	      refine_and_coarsen_fixed_number (triangulation,
+					       estimated_error_per_cell,
+					       0.500, 0.000);
+	    
+	  } // Volume
 
-    triangulation.execute_coarsening_and_refinement ();
+	
+	// pcout << "   Estimated error per cell: ";
+	// for (unsigned int i=0; i<estimated_error_per_cell.size (); ++i)
+	//   pcout << estimated_error_per_cell(i) << " ";
+	// pcout << std::endl;
+	
+	triangulation.execute_coarsening_and_refinement ();
+	
+      } // else
   }
   
   
@@ -423,7 +439,6 @@ namespace sarah
 
 	else
 	  refine_grid ();
-	  // triangulation.refine_global ();
 	
 	pcout << "   Number of active cells:       "
 	      << triangulation.n_global_active_cells ()
