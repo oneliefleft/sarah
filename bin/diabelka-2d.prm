@@ -9,7 +9,7 @@ set Global grid refinement steps   = 5
 set Adaptive grid refinement steps = 9
 
 # The strategy to be used for adaptive grids.
-set Adaptive grid strategy         = Potential
+set Adaptive grid strategy         = Kelly # Potential
 
 # A functional description of the potential.
 set Potential                      = 0.5 * ( x*x + y*y )

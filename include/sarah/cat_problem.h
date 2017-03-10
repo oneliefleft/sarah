@@ -170,6 +170,11 @@ namespace sarah
     std::vector<dealii::PETScWrappers::MPI::Vector> locally_relevant_solution;
 
     /**
+     * Error per cell.
+     */
+    dealii::Vector<float> estimated_error_per_cell;
+
+    /**
      * Solution value.
      */
     std::vector<double> solution_value;

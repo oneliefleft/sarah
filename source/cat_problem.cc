@@ -130,6 +130,9 @@ namespace sarah
     
     mass_matrix.reinit (locally_owned_dofs, locally_owned_dofs,	dsp,
 			mpi_communicator);
+
+    // Set correct size of the estimated error per cell
+    estimated_error_per_cell.reinit (triangulation.n_active_cells ());
   }
 
 
@@ -305,9 +308,16 @@ namespace sarah
       dealii::VectorTools::interpolate (dof_handler, potential, projected_potential);
     }
     data_out.add_data_vector (projected_potential, "interpolated_potential");
-    
+
+    pcout << "EE per cell size: " << estimated_error_per_cell.size ()
+	  << " linfty-norm: " << estimated_error_per_cell.linfty_norm ()
+	  <<std::endl;
+
+    estimated_error_per_cell /= estimated_error_per_cell.linfty_norm ();
+    data_out.add_data_vector (estimated_error_per_cell, "estimated_error_per_cell");
+        
     dealii::Vector<float> subdomain (triangulation.n_active_cells ());
-    for (unsigned int i=0; i<subdomain.size(); ++i)
+    for (unsigned int i=0; i<subdomain.size (); ++i)
       subdomain (i) = triangulation.locally_owned_subdomain ();
     data_out.add_data_vector (subdomain, "subdomain");
 
@@ -373,8 +383,6 @@ namespace sarah
       }
     else
       {
-	dealii::Vector<float> estimated_error_per_cell (triangulation.n_active_cells ());
-
 	if (strategy=="Kelly")
 
 	  {
@@ -400,19 +408,21 @@ namespace sarah
 						  error_function,
 						  estimated_error_per_cell,
 						  mpi_communicator);
-
-	    dealii::parallel::distributed::GridRefinement::
-	      refine_and_coarsen_fixed_number (triangulation,
-					       estimated_error_per_cell,
-					       0.500, 0.000);
 	    
 	  } // Volume
 
+
+	dealii::parallel::distributed::GridRefinement::
+	  refine_and_coarsen_fixed_number (triangulation,
+					   estimated_error_per_cell,
+					   0.500, 0.000);
 	
 	// pcout << "   Estimated error per cell: ";
 	// for (unsigned int i=0; i<estimated_error_per_cell.size (); ++i)
 	//   pcout << estimated_error_per_cell(i) << " ";
 	// pcout << std::endl;
+
+	// TODO output error estimator.
 	
 	triangulation.execute_coarsening_and_refinement ();
 	
