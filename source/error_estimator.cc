@@ -55,7 +55,7 @@ namespace sarah
       
       std::vector<dealii::types::global_dof_index> local_dof_indices (dofs_per_cell);
 
-      std::vector<Value> function_values (n_q_points);
+      std::vector<double> function_values (n_q_points);
       
       // Let there be a cell identification number. This
       // identification has nothing to do with the internal
@@ -110,7 +110,7 @@ namespace sarah
       
       std::vector<dealii::types::global_dof_index> local_dof_indices (dofs_per_cell);
 
-      std::vector<Value> function_values (n_q_points);
+      std::vector<double> function_values (n_q_points);
       
       // Let there be a cell identification number. This
       // identification has nothing to do with the internal
