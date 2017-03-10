@@ -33,7 +33,11 @@ namespace sarah
   
   namespace CellTools
   {
-  
+
+    /* inline */
+    /*   typename Value */
+    /*   integrate_cell () */
+    /* { */
     /* for (unsigned int q_point=0; q_point<n_q_points; ++q_point) */
     /*   for (unsigned int j=0; j<dofs_per_cell; ++j) */
     /*     { */
@@ -43,6 +47,7 @@ namespace sarah
     /* 	  fe_values.shape_value (j,q_point) * */
     /* 	  fe_values.JxW (q_point); */
     /*     }  */
+    /* } */
     
   } // CellTools
   
