@@ -99,6 +99,11 @@ namespace sarah
      * Solve the linear algebra system.
      */
     unsigned int solve ();
+
+    /**
+     * Process table of data.
+     */
+    void process_data (const unsigned int cycle);
     
     /**
      * Output results, ie., finite element functions and derived
@@ -193,6 +198,12 @@ namespace sarah
      * Stop clock.
      */
     dealii::TimerOutput timer;
+
+    /**
+     * Stiff for the convergence tables.
+     */
+    dealii::TableHandler convergence_table;
+    dealii::Timer        timer_solve;
     
     /**
      * Input parameter file.

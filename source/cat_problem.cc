@@ -39,6 +39,14 @@ namespace sarah
                               dealii::Patterns::Selection ("Global|Kelly|Potential"),
                               "The strategy to be used for adaptive grids.");
 
+    parameters.declare_entry ("Refinement fraction", "0.25",
+                              dealii::Patterns::Double (),
+			      "Fraction of cells to refine for a given strategy.");
+
+    parameters.declare_entry ("Coarsen fraction", "0.00",
+                              dealii::Patterns::Double (),
+			      "Fraction of cells to coarsen for a given strategy.");
+    
     parameters.declare_entry ("Potential", "0",
                               dealii::Patterns::Anything (),
                               "A functional description of the potential.");
@@ -245,9 +253,11 @@ namespace sarah
 
     solver.set_which_eigenpairs (EPS_SMALLEST_REAL);
     solver.set_problem_type (EPS_GHEP);
-    
+
+    timer_solve.start ();
     solver.solve (system_matrix, mass_matrix, solution_value, completely_distributed_solution,
 		  completely_distributed_solution.size ());
+    timer_solve.stop ();
 
     // Ensure that all ghost elements are also copied as necessary.
     for (unsigned int i=0; i<n_pairs; ++i)
@@ -260,6 +270,75 @@ namespace sarah
     return solver_control.last_step ();
   }
 
+
+  template <int dim>
+  void
+  CatProblem<dim>::process_data (const unsigned int cycle) 
+  {
+    // degree of polynomial.
+    convergence_table.add_value ("degree", order);
+    
+    // Cycle.
+    convergence_table.add_value ("cycle", cycle);
+    
+    // Grid data.
+    convergence_table.add_value ("#K", triangulation.n_active_cells ());
+    convergence_table.add_value ("#dofs", dof_handler.n_dofs ());
+    // convergence_table.add_value ("#itts", n_iterations);
+    
+    // Time taken for calculation
+    convergence_table.add_value ("time solve", timer_solve ());
+
+    // if (dealii::VectorTools::compute_mean_value (dof_handler,
+    //  						 dealii::QGauss<dim> (n_q_points),
+    //  						 eigenfunctions[0], 0)<0)
+    //   {
+    // 	for (unsigned int i=0; i<eigenfunctions.size (); ++i)
+    // 	  eigenfunctions[i] *= -1.;
+    //   }
+    
+    // Solution norm
+    for (unsigned int i=0; i<solution_value.size (); ++i)
+      {
+	std::string out = (std::string ("e(") +
+			   dealii::Utilities::int_to_string (i) +
+			   std::string (")"));
+	convergence_table.add_value (out, solution_value[i]);
+      }
+
+    switch (dim)
+      {
+      case 2:
+	for (unsigned int i=0; i<solution_value.size (); ++i)
+	  {
+	    std::string out = (std::string ("error(") +
+			       dealii::Utilities::int_to_string (i) +
+			       std::string (")"));
+	    convergence_table.add_value (out, solution_value[i]-i-1);
+	  }
+
+	break;
+
+      case 3:
+	for (unsigned int i=0; i<solution_value.size (); ++i)
+	  {
+	    std::string out = (std::string ("error(") +
+			       dealii::Utilities::int_to_string (i) +
+			       std::string (")"));
+	    convergence_table.add_value (out, solution_value[i]-i-1.5);
+	  }
+
+	break;
+
+      default:
+	AssertThrow (false, dealii::ExcNotImplemented ());
+
+      } // switch (dim)
+    
+  }
+  
+
+  
 
   /**
    * Output results, ie., finite element functions and derived
@@ -309,12 +388,8 @@ namespace sarah
     }
     data_out.add_data_vector (projected_potential, "interpolated_potential");
 
-    pcout << "EE per cell size: " << estimated_error_per_cell.size ()
-	  << " linfty-norm: " << estimated_error_per_cell.linfty_norm ()
-	  <<std::endl;
-
-    estimated_error_per_cell /= estimated_error_per_cell.linfty_norm ();
-    data_out.add_data_vector (estimated_error_per_cell, "estimated_error_per_cell");
+    // estimated_error_per_cell /= estimated_error_per_cell.linfty_norm ();
+    // data_out.add_data_vector (estimated_error_per_cell, "estimated_error_per_cell");
         
     dealii::Vector<float> subdomain (triangulation.n_active_cells ());
     for (unsigned int i=0; i<subdomain.size (); ++i)
@@ -415,7 +490,8 @@ namespace sarah
 	dealii::parallel::distributed::GridRefinement::
 	  refine_and_coarsen_fixed_number (triangulation,
 					   estimated_error_per_cell,
-					   0.500, 0.000);
+					   parameters.get_double ("Refinement fraction"),
+					   parameters.get_double ("Coarsen fraction"));
 	
 	// pcout << "   Estimated error per cell: ";
 	// for (unsigned int i=0; i<estimated_error_per_cell.size (); ++i)
@@ -483,10 +559,38 @@ namespace sarah
 	if (dealii::Utilities::MPI::n_mpi_processes (mpi_communicator) <= 32)
 	  output_results (cycle);
 
+	// Store values in table.
+	process_data (cycle);
+	
+	
 	// timer.print_summary ();
         pcout << std::endl;
 	
       } // for cycle<n_cycles
+
+    // Write out tables
+    convergence_table.set_precision ("cycle",   2);
+    
+    for (unsigned int i=0; i<solution_value.size (); ++i)
+      {
+     	std::string out = (std::string ("e(") +
+     			   dealii::Utilities::int_to_string (i) +
+     			   std::string (")"));
+     	convergence_table.set_precision (out, 9);
+      }
+    for (unsigned int i=0; i<solution_value.size (); ++i)
+      {
+	std::string out = (std::string ("error(") +
+			   dealii::Utilities::int_to_string (i) +
+			   std::string (")"));
+	convergence_table.set_precision (out, 9);
+      }
+
+      std::ostringstream filename;
+      filename << "convergence_table.txt";
+      std::ofstream output (filename.str ().c_str ());
+      convergence_table.write_text (output);
+
   } 
   
 } // namespace sarah
